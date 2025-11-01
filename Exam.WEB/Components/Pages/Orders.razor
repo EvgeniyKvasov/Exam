@@ -1,0 +1,195 @@
+﻿@page "/orders"
+<!DOCTYPE html>
+@rendermode InteractiveServer
+@using Exam.CORE.Models
+@using Exam.BLL.Services
+@inject OrderService OrderService
+
+<div style="padding: 20px; font-family: Arial;">
+    <h1>Онлайн Аптека</h1>
+
+    <div style="margin: 20px 0;">
+        <a href="/" style="margin-right: 15px;">Главная</a>
+        <a href="/products" style="margin-right: 15px;">Товары</a>
+        <a href="/orders" style="margin-right: 15px;">Заказы</a>
+    </div>
+
+    <hr />
+
+    <h3>Список заказов</h3>
+
+    @if (isLoading)
+    {
+        <p>Загрузка заказов...</p>
+    }
+    else if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div style="color: red; padding: 10px; border: 1px solid red;">
+            <strong>Ошибка:</strong> @errorMessage
+        </div>
+    }
+    else if (orders == null || !orders.Any())
+    {
+        <p>Заказы не найдены</p>
+    }
+    else
+    {
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+            <thead>
+                <tr style="background-color: #f8f9fa;">
+                    <th style="border: 1px solid #ddd; padding: 8px;">ID</th>
+                    <th style="border: 1px solid #ddd; padding: 8px;">Пользователь</th>
+                    <th style="border: 1px solid #ddd; padding: 8px;">Товар</th>
+                    <th style="border: 1px solid #ddd; padding: 8px;">Количество</th>
+                    <th style="border: 1px solid #ddd; padding: 8px;">Дата</th>
+                    <th style="border: 1px solid #ddd; padding: 8px;">Статус</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var order in orders)
+                {
+                    <tr>
+                        <td style="border: 1px solid #ddd; padding: 8px;">@order.Id</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">@order.User?.Name</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">@order.Product?.Name</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">@order.Quantity</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">@order.OrderDate.ToString("dd.MM.yyyy")</td>
+                        <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">
+                            @if (order.IsConfirmed)
+                            {
+                                <span>Обрабатывается</span>
+                            }
+                            else
+                            {
+                                <span>Заказан</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px;">
+            <h4>Подтверждение заказов</h4>
+
+            @if (orders.Any(o => !o.IsConfirmed))
+            {
+                <p>Выберите заказы для подтверждения:</p>
+
+                <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
+                    <thead>
+                        <tr style="background-color: #e9ecef;">
+                            <th style="border: 1px solid #ddd; padding: 8px; width: 50px;">Выбрать</th>
+                            <th style="border: 1px solid #ddd; padding: 8px;">ID</th>
+                            <th style="border: 1px solid #ddd; padding: 8px;">Пользователь</th>
+                            <th style="border: 1px solid #ddd; padding: 8px;">Товар</th>
+                            <th style="border: 1px solid #ddd; padding: 8px;">Количество</th>
+                            <th style="border: 1px solid #ddd; padding: 8px;">Статус</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var order in orders.Where(o => !o.IsConfirmed))
+                        {
+                            <tr>
+                                <td style="border: 1px solid #ddd; padding: 8px; text-align: center;">
+                                    <input type="checkbox" @bind="order.IsSelected" />
+                                </td>
+                                <td style="border: 1px solid #ddd; padding: 8px;">@order.Id</td>
+                                <td style="border: 1px solid #ddd; padding: 8px;">@order.User?.Name</td>
+                                <td style="border: 1px solid #ddd; padding: 8px;">@order.Product?.Name</td>
+                                <td style="border: 1px solid #ddd; padding: 8px;">@order.Quantity</td>
+                                <td style="border: 1px solid #ddd; padding: 8px;">Заказан</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+                <button @onclick="ConfirmSelectedOrders"
+                        style="padding: 10px 20px; background-color: white; color: black; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; font-size: 16px;">
+                    Подтвердить выбранные заказы
+                </button>
+            }
+            else
+            {
+                <p>Все заказы подтверждены</p>
+            }
+
+            @if (!string.IsNullOrEmpty(actionMessage))
+            {
+                <div style="margin-top: 15px; padding: 10px;
+                                 background-color: #f8f9fa;
+                                 color: #333;
+                                 border: 1px solid #ddd;
+                                 border-radius: 4px;">
+                    @actionMessage
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<Order> orders = new();
+    private string errorMessage = string.Empty;
+    private string actionMessage = string.Empty;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadOrders();
+    }
+
+    private async Task LoadOrders()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = string.Empty;
+            orders = await OrderService.GetAllOrdersAsync();
+
+            foreach (var order in orders)
+            {
+                order.IsSelected = false;
+                order.IsConfirmed = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Ошибка загрузки: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ConfirmSelectedOrders()
+    {
+        try
+        {
+            var selectedOrders = orders.Where(o => o.IsSelected && !o.IsConfirmed).ToList();
+
+            if (!selectedOrders.Any())
+            {
+                actionMessage = "Не выбрано ни одного заказа для подтверждения";
+                StateHasChanged();
+                return;
+            }
+
+            foreach (var order in selectedOrders)
+            {
+                order.IsConfirmed = true;
+                order.IsSelected = false;
+            }
+
+            actionMessage = $"Успешно подтверждено заказов: {selectedOrders.Count}";
+        }
+        catch (Exception ex)
+        {
+            actionMessage = $"Ошибка при подтверждении заказов: {ex.Message}";
+        }
+
+        StateHasChanged();
+    }
+}

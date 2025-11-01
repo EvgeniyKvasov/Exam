@@ -1,0 +1,22 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>Аптека</title>
+    <base href="/" />
+</head>
+<body>
+    <Router AppAssembly="@typeof(App).Assembly">
+        <Found Context="routeData">
+            <RouteView RouteData="@routeData" />
+        </Found>
+        <NotFound>
+            <h2>404 - Страница не найдена</h2>
+            <p>Запрошенный URL: @(NavigationManager.Uri)</p>
+        </NotFound>
+    </Router>
+
+    <script src="_framework/blazor.server.js"></script>
+</body>
+</html>
+
+@inject NavigationManager NavigationManager
