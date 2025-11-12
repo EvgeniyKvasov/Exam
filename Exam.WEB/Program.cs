@@ -1,22 +1,26 @@
 using Exam.BLL.Services;
 using Exam.CORE.Interfaces;
 using Exam.DAL.Repositories;
+using Exam.DAL.Data;
 using Exam.WEB.Components;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Получаем connection string
+
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
-// Репозитории с прямым Npgsql
-builder.Services.AddScoped<IProductRepository>(_ => new ProductRepository(connectionString));
+
+builder.Services.AddDbContext<PharmacyContext>(options =>
+    options.UseNpgsql(connectionString));
+
+builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IOrderRepository>(_ => new OrderRepository(connectionString));
 
-// Сервисы бизнес-логики
+
 builder.Services.AddScoped<ProductService>();
 builder.Services.AddScoped<OrderService>();
 
-// Blazor Server
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
